@@ -27,235 +27,235 @@ import { FilmPass } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/js
 
 import { Terrain } from './terrain.js'
 
-const pink = 0xbc1974;
-const skyColor = 0x1b073b;
-const groundColor = 0x0c062a;
+export class RetroSceneAnimation {
 
-const FOV = 45;
-const NEAR = 1;
-const FAR = 350;
-let height = document.body.clientHeight;
-let width = document.body.clientWidth;
-const ASPECT = width / height;
+    pink = 0xbc1974;
+    skyColor = 0x1b073b;
+    groundColor = 0x0c062a;
 
-const canvas = document.getElementById('bg');
+    FOV = 45;
+    NEAR = 1;
+    FAR = 350;
 
-function createSkydome() {
+    get aspect() {
+        return this.width / this.height;
+    }
 
-    const vertexShader = `
-        varying vec3 vWorldPosition;
+    clock = new Clock();
+    scene = new Scene();
 
-        void main() {
+    constructor(canvas) {
 
-            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-            vWorldPosition = worldPosition.xyz;
+        this.canvas = canvas;
+        this.width = canvas.clientWidth;
+        this.height = canvas.clientHeight;
 
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        this.scene.background = new Color(this.skyColor);
+        this.scene.fog = new Fog(this.pink, 1, this.FAR / 2);
 
+        this.scene.add(this.createSkydome());
+
+        this.scene.add(this.createSunset());
+
+        this.createStars().map(star => this.scene.add(star));
+
+        this.camera = new PerspectiveCamera(this.FOV, this.aspect, this.NEAR, this.FAR);
+        this.camera.position.set(0, 6, 30);
+        this.camera.target = new Vector3(0, 0, 20);
+
+        this.scene.add(this.camera);
+
+        this.terrain = new Terrain(this.FAR);
+        this.terrain.createChunk(new Vector3());
+        this.terrain.createChunk(new Vector3(0, 0, -1));
+
+        this.terrain.addTo(this.scene);
+
+        this.renderer = new WebGLRenderer({ antialias: true, canvas });
+        this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+        this.renderer.toneMapping = ReinhardToneMapping;
+        this.renderer.toneMappingExposure = Math.pow(1, 4.0);
+
+        const renderPass = new RenderPass(this.scene, this.camera);
+
+        // const bloomPass = new UnrealBloomPass(new Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0.8);
+        // bloomPass.threshold = 0;
+        // bloomPass.strength = 1.5;
+        // bloomPass.radius = 0.8;
+
+        // const glitchPass = new GlitchPass();
+
+        const effectFilm = new FilmPass(
+            0.2, // noise intensity
+            0.75, // scanline intensity
+            2048, // scanline count
+            false // grayscale
+        );
+
+        this.composer = new EffectComposer(this.renderer);
+        this.composer.addPass(renderPass);
+        // composer.addPass(bloomPass);
+        this.composer.addPass(effectFilm);
+        // composer.addPass(glitchPass);
+
+    }
+
+    createSkydome() {
+
+        const vertexShader = `
+            varying vec3 vWorldPosition;
+    
+            void main() {
+    
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+    
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    
+            }
+        `;
+        const fragmentShader = `
+            uniform vec3 topColor;
+            uniform vec3 bottomColor;
+            uniform float offset;
+            uniform float exponent;
+    
+            varying vec3 vWorldPosition;
+    
+            void main() {
+    
+                float h = normalize(vWorldPosition + offset).y;
+                float w = normalize(vWorldPosition).x;
+                gl_FragColor = vec4(
+                    mix(
+                        bottomColor, 
+                        topColor,
+                        max(h / exponent, 0.0)
+                    ),
+                    1.0
+                );
+    
+            }
+        `;
+        const uniforms = {
+            "topColor": { value: new Color(this.skyColor) },
+            "bottomColor": { value: new Color(this.pink) },
+            "offset": { value: -4 },
+            "exponent": { value: 0.2 }
+        };
+
+        const skyGeometry = new SphereGeometry(this.FAR / 2, 32, 15);
+        const skyMataterial = new ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            side: BackSide
+        });
+
+        return new Mesh(skyGeometry, skyMataterial);
+
+    }
+
+    createGround() {
+        const geometry = new PlaneGeometry(this.FAR, this.FAR, 100, 100);
+        const material = new MeshBasicMaterial({ color: this.groundColor });
+        material.side = DoubleSide;
+        const mesh = new Mesh(geometry, material);
+        mesh.rotateX(Math.PI / 2); // 90deg
+
+        return mesh;
+    }
+
+    createSunset(size = 40) {
+
+        const geometry = new SphereGeometry(size, size, 32);
+        const material = new MeshBasicMaterial({ color: this.pink });
+        const mesh = new Mesh(geometry, material);
+
+        mesh.position.set(0, size * 0.35, -this.FAR / 1.8);
+
+        return mesh;
+    }
+
+    createStars() {
+        const geometry = new BufferGeometry();
+
+        const vertices = [];
+        const vertex = new Vector3();
+
+        for (let i = 0; i < 2000; i++) {
+            vertex.x = Math.random() * 2 - 1;
+            vertex.y = Math.random() * 2 - 1;
+            vertex.z = Math.random() * 2 - 1;
+            vertex.multiplyScalar(3);
+
+            vertices.push(vertex.x, vertex.y, vertex.z);
         }
-    `;
-    const fragmentShader = `
-        uniform vec3 topColor;
-        uniform vec3 bottomColor;
-        uniform float offset;
-        uniform float exponent;
 
-        varying vec3 vWorldPosition;
+        geometry.setAttribute(
+            "position",
+            new Float32BufferAttribute(vertices, 3)
+        );
 
-        void main() {
+        const starsMaterials = [
+            0x555555,
+            0x333333,
+            0x3a3a3a,
+            // 0x1a1a1a
+        ].reduce((materials, color) => {
+            materials.push(
+                new PointsMaterial({
+                    color,
+                    size: 2,
+                    sizeAttenuation: false,
+                }),
+                new PointsMaterial({
+                    color,
+                    size: 1,
+                    sizeAttenuation: false,
+                }),
+            );
+            return materials;
+        }, []);
 
-            float h = normalize(vWorldPosition + offset).y;
-            float w = normalize(vWorldPosition).x;
-            gl_FragColor = vec4(
-                mix(
-                    bottomColor, 
-                    topColor,
-                    max(h / exponent, 0.0)
-                ),
-                1.0
+        const materialCount = starsMaterials.length;
+
+        const stars = []
+        for (let i = 10; i < 20; i++) {
+            const points = new Points(
+                geometry,
+                starsMaterials[i % materialCount]
             );
 
+            points.rotation.x = Math.random() * 2;
+            points.rotation.y = Math.random() * 2;
+            points.rotation.z = Math.random() * 2;
+            points.scale.setScalar(i * 10);
+
+            points.matrixAutoUpdate = false;
+            points.updateMatrix();
+
+            stars.push(points);
         }
-    `;
-    const uniforms = {
-        "topColor": { value: new Color(skyColor) },
-        "bottomColor": { value: new Color(pink) },
-        "offset": { value: -4 },
-        "exponent": { value: 0.2 }
-    };
 
-    const skyGeometry = new SphereGeometry(FAR / 2, 32, 15);
-    const skyMataterial = new ShaderMaterial({
-        uniforms: uniforms,
-        vertexShader: vertexShader,
-        fragmentShader: fragmentShader,
-        side: BackSide
-    });
-
-    return new Mesh(skyGeometry, skyMataterial);
-
-}
-
-function createGround() {
-    const geometry = new PlaneGeometry(FAR, FAR, 100, 100);
-    const material = new MeshBasicMaterial({ color: groundColor });
-    material.side = DoubleSide;
-    const mesh = new Mesh(geometry, material);
-    mesh.rotateX(Math.PI / 2); // 90deg
-
-    return mesh;
-}
-
-function createSunset(size = 40) {
-
-    const geometry = new SphereGeometry(size, size, 32);
-    const material = new MeshBasicMaterial({ color: pink });
-    const mesh = new Mesh(geometry, material);
-
-    mesh.position.set(0, size * 0.35, -FAR / 1.8);
-
-    return mesh;
-}
-
-function createStars() {
-    const geometry = new BufferGeometry();
-
-    const vertices = [];
-    const vertex = new Vector3();
-
-    for (let i = 0; i < 2000; i++) {
-        vertex.x = Math.random() * 2 - 1;
-        vertex.y = Math.random() * 2 - 1;
-        vertex.z = Math.random() * 2 - 1;
-        vertex.multiplyScalar(3);
-
-        vertices.push(vertex.x, vertex.y, vertex.z);
+        return stars;
     }
 
-    geometry.setAttribute(
-        "position",
-        new Float32BufferAttribute(vertices, 3)
-    );
+    resize(width, height) {
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
 
-    const starsMaterials = [
-        0x555555,
-        0x333333,
-        0x3a3a3a,
-        // 0x1a1a1a
-    ].reduce((materials, color) => {
-        materials.push(
-            new PointsMaterial({
-                color,
-                size: 2,
-                sizeAttenuation: false,
-            }),
-            new PointsMaterial({
-                color,
-                size: 1,
-                sizeAttenuation: false,
-            }),
-        );
-        return materials;
-    }, []);
-
-    const materialCount = starsMaterials.length;
-
-    const stars = []
-    for (let i = 10; i < 20; i++) {
-        const points = new Points(
-            geometry,
-            starsMaterials[i % materialCount]
-        );
-
-        points.rotation.x = Math.random() * 2;
-        points.rotation.y = Math.random() * 2;
-        points.rotation.z = Math.random() * 2;
-        points.scale.setScalar(i * 10);
-
-        points.matrixAutoUpdate = false;
-        points.updateMatrix();
-
-        stars.push(points);
+        this.renderer.setSize(width, height);
+        this.composer.setSize(width, height);
     }
 
-    return stars;
+    render = function () {
+        this.terrain.update(0.5);
+
+        this.composer.render();
+        // this.renderer.render(this.scene, this.camera);
+
+        requestAnimationFrame(() => this.render());
+    }
+
 }
-
-const clock = new Clock();
-const scene = new Scene();
-
-scene.background = new Color(skyColor);
-scene.fog = new Fog(pink, 1, FAR / 2);
-
-scene.add(createSkydome());
-
-scene.add(createSunset());
-
-createStars().map(star => scene.add(star));
-
-const camera = new PerspectiveCamera(FOV, ASPECT, NEAR, FAR);
-camera.position.set(0, 6, 30);
-camera.target = new Vector3(0, 0, 20);
-
-scene.add(camera);
-
-const terrain = new Terrain(FAR);
-terrain.createChunk(new Vector3());
-terrain.createChunk(new Vector3(0, 0, -1));
-
-terrain.addTo(scene);
-
-const renderer = new WebGLRenderer({ antialias: true, canvas });
-renderer.setPixelRatio(window.devicePixelRatio || 1);
-renderer.toneMapping = ReinhardToneMapping;
-renderer.toneMappingExposure = Math.pow(1, 4.0);
-
-const renderPass = new RenderPass(scene, camera);
-
-// const bloomPass = new UnrealBloomPass(new Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0.8);
-// bloomPass.threshold = 0;
-// bloomPass.strength = 1.5;
-// bloomPass.radius = 0.8;
-
-// const glitchPass = new GlitchPass();
-
-const effectFilm = new FilmPass(
-    0.2, // noise intensity
-    0.75, // scanline intensity
-    2048, // scanline count
-    false // grayscale
-);
-
-const composer = new EffectComposer(renderer);
-composer.addPass(renderPass);
-// composer.addPass(bloomPass);
-composer.addPass(effectFilm);
-// composer.addPass(glitchPass);
-
-const resize = (width, height) => {
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(width, height);
-    composer.setSize(width, height);
-};
-
-const render = function () {
-    const tmpHeight = document.body.clientHeight;
-    const tmpWidth = document.body.clientWidth;
-    if (tmpHeight !== height || tmpWidth !== width) {
-        height = tmpHeight;
-        width = tmpWidth;
-        resize(width, height);
-    }
-
-    terrain.update(0.5);
-
-    composer.render();
-    // renderer.render(scene, camera);
-
-    requestAnimationFrame(render);
-};
-
-resize(width, height);
-render();
