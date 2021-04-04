@@ -26,14 +26,16 @@ class RetroScene extends HTMLElement {
 
     connectedCallback() {
         this.shadowRoot.appendChild(template.content.cloneNode(true));
+        const host = this.shadowRoot.host;
         const canvas = this.shadowRoot.getElementById("canvas");
         this.scene = new RetroSceneAnimation(canvas);
 
         window.addEventListener('resize', (event) => {
-            this.scene.resize(this.shadowRoot.host.clientWidth, this.shadowRoot.host.clientHeight);
+            console.log(host.clientHeight)
+            this.scene.resize(host.clientWidth, host.clientHeight);
         })
 
-        this.scene.resize(canvas.clientWidth, canvas.clientHeight);
+        this.scene.resize(host.clientWidth, host.clientHeight);
         this.scene.render();
     }
 

@@ -37,18 +37,15 @@ export class RetroSceneAnimation {
     NEAR = 1;
     FAR = 350;
 
-    get aspect() {
-        return this.width / this.height;
-    }
-
     clock = new Clock();
     scene = new Scene();
 
     constructor(canvas) {
 
         this.canvas = canvas;
-        this.width = canvas.clientWidth;
-        this.height = canvas.clientHeight;
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        const aspect = width / height;
 
         this.scene.background = new Color(this.skyColor);
         this.scene.fog = new Fog(this.pink, 1, this.FAR / 2);
@@ -59,7 +56,7 @@ export class RetroSceneAnimation {
 
         this.createStars().map(star => this.scene.add(star));
 
-        this.camera = new PerspectiveCamera(this.FOV, this.aspect, this.NEAR, this.FAR);
+        this.camera = new PerspectiveCamera(this.FOV, aspect, this.NEAR, this.FAR);
         this.camera.position.set(0, 6, 30);
         this.camera.target = new Vector3(0, 0, 20);
 
