@@ -1,11 +1,11 @@
+# Retro Scene
 ![Preview](https://alexfriesen.github.io/retro/preview.png)
 
-# retro
 A cool retro scene 😎🌄🌠
 
-# use web components
+# How to use
 
-```js
+```html
 <script defer type="module" src="https://alexfriesen.github.io/retro/src/index.js"></script>
 <retro-scene></retro-scene>
 ```
