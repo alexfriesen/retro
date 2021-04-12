@@ -1,5 +1,5 @@
 # Retro Scene
-![Preview](https://alexfriesen.github.io/retro/preview.png)
+![Preview](https://alexfriesen.github.io/retro/preview.gif)
 
 A cool retro scene 😎🌄🌠
 
