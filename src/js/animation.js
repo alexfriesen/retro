@@ -40,6 +40,8 @@ export class RetroSceneAnimation {
     clock = new Clock();
     scene = new Scene();
 
+    animationId = null;
+
     constructor(canvas) {
 
         this.canvas = canvas;
@@ -246,13 +248,17 @@ export class RetroSceneAnimation {
         this.composer.setSize(width, height);
     }
 
-    render = function () {
+    render() {
         this.terrain.update(0.5);
 
         this.composer.render();
         // this.renderer.render(this.scene, this.camera);
 
-        requestAnimationFrame(() => this.render());
+        this.animationId = requestAnimationFrame(() => this.render());
+    }
+
+    stop() {
+        cancelAnimationFrame(this.animationId);
     }
 
 }

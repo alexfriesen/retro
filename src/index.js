@@ -31,12 +31,15 @@ class RetroScene extends HTMLElement {
         this.scene = new RetroSceneAnimation(canvas);
 
         window.addEventListener('resize', (event) => {
-            console.log(host.clientHeight)
             this.scene.resize(host.clientWidth, host.clientHeight);
         })
 
         this.scene.resize(host.clientWidth, host.clientHeight);
         this.scene.render();
+    }
+
+    disconnectedCallback() {
+        this.scene.stop();
     }
 
 }
