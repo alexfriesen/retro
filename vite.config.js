@@ -1,10 +1,10 @@
 export default {
     // config options
+    base: '/retro/',
     build: {
         chunkSizeWarningLimit: 520,
         rollupOptions: {
             output: {
-                manualChunks: undefined,
                 entryFileNames: `[name].js`,
                 chunkFileNames: `[name].js`,
                 assetFileNames: `[name].[ext]`
