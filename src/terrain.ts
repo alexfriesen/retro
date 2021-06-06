@@ -5,31 +5,31 @@ import {
     Mesh,
     MeshBasicMaterial,
     PlaneGeometry,
-} from 'https://cdn.jsdelivr.net/npm/three@0.127.0/build/three.module.js';
-import SimplexNoise from 'https://cdn.jsdelivr.net/npm/simplex-noise-esm@2.5.0-esm.0/dist-esm/simplex-noise.js';
+    Scene,
+} from 'three';
+import SimplexNoise from 'simplex-noise';
 
-const seed = Date.now();
+const seed = `${Date.now()}`;
 
 export class Terrain {
 
-    chunks = new Set();
+    chunks = new Set<TerrainChunk>();
 
-    constructor(chunksize = 50) {
-        this.chunksize = chunksize;
+    constructor(private chunksize = 50) {
     }
 
-    addChunk(chunk) {
+    addChunk(chunk: TerrainChunk) {
         this.chunks.add(chunk);
     }
 
-    createChunk(offset) {
+    createChunk(offset: Vector3) {
         const offsetPosition = offset.multiplyScalar(this.chunksize);
         const chunk = new TerrainChunk(this.chunksize, offsetPosition);
 
         this.addChunk(chunk);
     }
 
-    addTo(scene) {
+    addTo(scene: Scene) {
         for (const chunk of this.chunks) {
             chunk.mesh.position.z = chunk.offset.z;
 
@@ -37,7 +37,7 @@ export class Terrain {
         }
     }
 
-    update(speed) {
+    update(speed: number) {
         for (const chunk of this.chunks) {
             chunk.update(speed);
             if (chunk.mesh.position.z > this.chunksize) {
@@ -55,8 +55,17 @@ export class TerrainChunk {
 
     height = 20;
     smoothing = 10;
+    segments: number;
+    simplex: SimplexNoise;
 
-    constructor(size = 50, offset = new Vector3()) {
+    mesh: Mesh;
+    geometry: PlaneGeometry;
+    material: MeshBasicMaterial;
+
+    constructor(
+        private size = 50,
+        public offset = new Vector3(),
+    ) {
         this.size = size;
         this.segments = size / 2;
         this.offset = offset;
@@ -77,7 +86,7 @@ export class TerrainChunk {
     }
 
     setGeometryHeight() {
-        const vertices = this.geometry.getAttribute('position').array;
+        const vertices = this.geometry.getAttribute('position').array as number[];
 
         for (let i = 2; i < vertices.length; i += 3) {
             const x = vertices[i - 2] + this.offset.x;
@@ -85,40 +94,40 @@ export class TerrainChunk {
             vertices[i] = -y;
             const z = vertices[i] + this.offset.z;
 
-            vertices[i - 1] = this.simplex.noise2D(x / this.smoothing, z / this.smoothing) * this.getHeight({ x, y, z });
+            vertices[i - 1] = this.simplex.noise2D(x / this.smoothing, z / this.smoothing) * this.getHeight(new Vector3(x, y, z));
         }
 
         this.geometry.setAttribute('position', new BufferAttribute(vertices, 3));
         this.geometry.computeVertexNormals();
     }
 
-    getHeight(position) {
+    getHeight(position: Vector3) {
         return Math.min(Math.abs(position.x) * 0.1, this.height);
     }
 
-    addTo(scene) {
+    addTo(scene: Scene) {
         scene.add(this.mesh);
     }
 
-    update(speed) {
+    update(speed: number) {
         this.mesh.position.z = this.mesh.position.z + speed;
     }
 
-    updateOffset(offset) {
+    updateOffset(offset: Vector3) {
         this.offset.add(offset);
 
         this.updateGeometry();
     }
 
     updateGeometry() {
-        const vertices = this.geometry.getAttribute('position').array;
+        const vertices = this.geometry.getAttribute('position').array as number[];
 
         for (let i = 2; i < vertices.length; i += 3) {
             const x = vertices[i - 2] + this.offset.x;
             const y = vertices[i - 1];
             const z = vertices[i] + this.offset.z;
 
-            vertices[i - 1] = this.simplex.noise2D(x / this.smoothing, z / this.smoothing) * this.getHeight({ x, y, z });
+            vertices[i - 1] = this.simplex.noise2D(x / this.smoothing, z / this.smoothing) * this.getHeight(new Vector3(x, y, z));
         }
 
         this.geometry.setAttribute('position', new BufferAttribute(vertices, 3));

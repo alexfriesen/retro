@@ -18,16 +18,18 @@ import {
     PointsMaterial,
     ShaderMaterial,
     ReinhardToneMapping,
-} from "https://cdn.jsdelivr.net/npm/three@0.127.0/build/three.module.js";
-import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/postprocessing/RenderPass.js';
-// import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/postprocessing/UnrealBloomPass.js';
-// import { GlitchPass } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/postprocessing/GlitchPass.js';
-import { FilmPass } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/postprocessing/FilmPass.js';
+} from "three";
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+// import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+// import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
+import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 
-import { Terrain } from './terrain.js'
+import { Terrain } from './terrain'
 
 export class RetroSceneAnimation {
+
+    canvas: HTMLCanvasElement;
 
     pink = 0xbc1974;
     skyColor = 0x1b073b;
@@ -37,12 +39,17 @@ export class RetroSceneAnimation {
     NEAR = 1;
     FAR = 350;
 
+    terrain: Terrain;
+
+    camera: PerspectiveCamera;
+    renderer: WebGLRenderer;
+    composer: EffectComposer;
     clock = new Clock();
     scene = new Scene();
 
-    animationId = null;
+    animationId: number | null = null;
 
-    constructor(canvas) {
+    constructor(canvas: HTMLCanvasElement) {
 
         this.canvas = canvas;
         const width = canvas.clientWidth;
@@ -60,7 +67,6 @@ export class RetroSceneAnimation {
 
         this.camera = new PerspectiveCamera(this.FOV, aspect, this.NEAR, this.FAR);
         this.camera.position.set(0, 6, 30);
-        this.camera.target = new Vector3(0, 0, 20);
 
         this.scene.add(this.camera);
 
@@ -88,7 +94,7 @@ export class RetroSceneAnimation {
             0.2, // noise intensity
             0.75, // scanline intensity
             2048, // scanline count
-            false // grayscale
+            0 // grayscale
         );
 
         this.composer = new EffectComposer(this.renderer);
@@ -215,7 +221,7 @@ export class RetroSceneAnimation {
                 }),
             );
             return materials;
-        }, []);
+        }, [] as PointsMaterial[]);
 
         const materialCount = starsMaterials.length;
 
@@ -240,7 +246,7 @@ export class RetroSceneAnimation {
         return stars;
     }
 
-    resize(width, height) {
+    resize(width: number, height: number) {
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
 
@@ -258,7 +264,9 @@ export class RetroSceneAnimation {
     }
 
     stop() {
-        cancelAnimationFrame(this.animationId);
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
     }
 
 }

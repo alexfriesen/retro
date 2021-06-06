@@ -1,4 +1,4 @@
-import { RetroSceneAnimation } from './js/animation.js';
+import { RetroSceneAnimation } from './animation';
 
 const template = document.createElement("template");
 template.innerHTML = /*html*/`
@@ -19,19 +19,22 @@ template.innerHTML = /*html*/`
 
 class RetroScene extends HTMLElement {
 
+    private shadow: ShadowRoot;
+    private scene: RetroSceneAnimation | undefined;
+
     constructor() {
         super();
-        this.attachShadow({ mode: "open" });
+        this.shadow = this.attachShadow({ mode: "open" });
     }
 
     connectedCallback() {
-        this.shadowRoot.appendChild(template.content.cloneNode(true));
-        const host = this.shadowRoot.host;
-        const canvas = this.shadowRoot.getElementById("canvas");
+        this.shadow.appendChild(template.content.cloneNode(true));
+        const host = this.shadow.host;
+        const canvas = this.shadow.getElementById("canvas") as HTMLCanvasElement;
         this.scene = new RetroSceneAnimation(canvas);
 
-        window.addEventListener('resize', (event) => {
-            this.scene.resize(host.clientWidth, host.clientHeight);
+        window.addEventListener('resize', () => {
+            this.scene?.resize(host.clientWidth, host.clientHeight);
         })
 
         this.scene.resize(host.clientWidth, host.clientHeight);
@@ -39,7 +42,8 @@ class RetroScene extends HTMLElement {
     }
 
     disconnectedCallback() {
-        this.scene.stop();
+        this.scene?.stop();
+        this.scene = undefined;
     }
 
 }
