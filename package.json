@@ -8,12 +8,12 @@
   },
   "devDependencies": {
     "@types/node": "^16.6.1",
-    "@types/three": "~0.133.0",
+    "@types/three": "~0.140.0",
     "typescript": "^4.3.5",
     "vite": "^2.5.0"
   },
   "dependencies": {
     "simplex-noise": "^3.0.0",
-    "three": "~0.134.0"
+    "three": "~0.140.0"
   }
 }
