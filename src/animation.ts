@@ -19,6 +19,7 @@ import {
     ShaderMaterial,
     ReinhardToneMapping,
 } from "three";
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 // import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -41,6 +42,7 @@ export class RetroSceneAnimation {
 
     terrain: Terrain;
 
+    controls: OrbitControls;
     camera: PerspectiveCamera;
     renderer: WebGLRenderer;
     composer: EffectComposer;
@@ -102,6 +104,8 @@ export class RetroSceneAnimation {
         // composer.addPass(bloomPass);
         this.composer.addPass(effectFilm);
         // composer.addPass(glitchPass);
+
+        this.controls = this.createControls();
 
     }
 
@@ -246,6 +250,28 @@ export class RetroSceneAnimation {
         return stars;
     }
 
+    createControls() {
+        const controls = new OrbitControls(this.camera, this.canvas);
+
+        const horizontalLimit = 1.8;
+        const minVerticalLimit = 0.35;
+        const maxVerticalLimit = 0.48;
+
+        controls.enablePan = false;
+        controls.enableZoom = false;
+        controls.enableDamping = true;
+
+        // ranges from 0 to Math.PI
+        controls.minPolarAngle = minVerticalLimit * Math.PI;
+        controls.maxPolarAngle = maxVerticalLimit * Math.PI;
+
+        // ranges from -2Math.PI to 2Math.PI
+        controls.maxAzimuthAngle = -horizontalLimit * Math.PI;
+        controls.minAzimuthAngle = horizontalLimit * Math.PI;
+
+        return controls;
+    }
+
     resize(width: number, height: number) {
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
@@ -257,6 +283,7 @@ export class RetroSceneAnimation {
     render() {
         this.terrain.update(0.5);
 
+        this.controls.update();
         this.composer.render();
         // this.renderer.render(this.scene, this.camera);
 
