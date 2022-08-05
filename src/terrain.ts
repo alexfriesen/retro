@@ -7,7 +7,8 @@ import {
     PlaneGeometry,
     Scene,
 } from 'three';
-import SimplexNoise from 'simplex-noise';
+import { createNoise2D, NoiseFunction2D } from 'simplex-noise';
+import alea from 'alea';
 
 const seed = `${Date.now()}`;
 
@@ -56,7 +57,7 @@ export class TerrainChunk {
     height = 20;
     smoothing = 10;
     segments: number;
-    simplex: SimplexNoise;
+    simplex: NoiseFunction2D;
 
     mesh: Mesh;
     geometry: PlaneGeometry;
@@ -69,7 +70,7 @@ export class TerrainChunk {
         this.size = size;
         this.segments = size / 2;
         this.offset = offset;
-        this.simplex = new SimplexNoise(seed);
+        this.simplex = createNoise2D(alea(seed));
 
 
         this.geometry = new PlaneGeometry(
@@ -94,7 +95,7 @@ export class TerrainChunk {
             vertices[i] = -y;
             const z = vertices[i] + this.offset.z;
 
-            vertices[i - 1] = this.simplex.noise2D(x / this.smoothing, z / this.smoothing) * this.getHeight(new Vector3(x, y, z));
+            vertices[i - 1] = this.simplex(x / this.smoothing, z / this.smoothing) * this.getHeight(new Vector3(x, y, z));
         }
 
         this.geometry.setAttribute('position', new BufferAttribute(vertices, 3));
@@ -127,7 +128,7 @@ export class TerrainChunk {
             const y = vertices[i - 1];
             const z = vertices[i] + this.offset.z;
 
-            vertices[i - 1] = this.simplex.noise2D(x / this.smoothing, z / this.smoothing) * this.getHeight(new Vector3(x, y, z));
+            vertices[i - 1] = this.simplex(x / this.smoothing, z / this.smoothing) * this.getHeight(new Vector3(x, y, z));
         }
 
         this.geometry.setAttribute('position', new BufferAttribute(vertices, 3));

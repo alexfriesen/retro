@@ -2,7 +2,7 @@ export default {
     // config options
     base: '/retro/',
     build: {
-        chunkSizeWarningLimit: 550,
+        chunkSizeWarningLimit: 500,
         rollupOptions: {
             output: {
                 entryFileNames: `[name].js`,
