@@ -6,6 +6,6 @@ A cool retro scene 😎🌄🌠
 # How to use
 
 ```html
-<script defer type="module" src="https://alexfriesen.github.io/retro/index.js"></script>
+<script type="module" crossorigin src="https://alexfriesen.github.io/retro/index.js"></script>
 <retro-scene></retro-scene>
 ```
