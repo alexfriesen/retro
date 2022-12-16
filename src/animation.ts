@@ -27,6 +27,8 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 
 import { Terrain } from './terrain'
+import skydomeVertex from './glsl/skydome.vert';
+import skydomeFragment from './glsl/skydome.frag';
 
 export class RetroSceneAnimation {
 
@@ -110,42 +112,6 @@ export class RetroSceneAnimation {
     }
 
     createSkydome() {
-
-        const vertexShader = `
-            varying vec3 vWorldPosition;
-    
-            void main() {
-    
-                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-                vWorldPosition = worldPosition.xyz;
-    
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    
-            }
-        `;
-        const fragmentShader = `
-            uniform vec3 topColor;
-            uniform vec3 bottomColor;
-            uniform float offset;
-            uniform float exponent;
-    
-            varying vec3 vWorldPosition;
-    
-            void main() {
-    
-                float h = normalize(vWorldPosition + offset).y;
-                float w = normalize(vWorldPosition).x;
-                gl_FragColor = vec4(
-                    mix(
-                        bottomColor, 
-                        topColor,
-                        max(h / exponent, 0.0)
-                    ),
-                    1.0
-                );
-    
-            }
-        `;
         const uniforms = {
             "topColor": { value: new Color(this.skyColor) },
             "bottomColor": { value: new Color(this.pink) },
@@ -156,8 +122,8 @@ export class RetroSceneAnimation {
         const skyGeometry = new SphereGeometry(this.FAR / 2, 32, 15);
         const skyMataterial = new ShaderMaterial({
             uniforms: uniforms,
-            vertexShader: vertexShader,
-            fragmentShader: fragmentShader,
+            vertexShader: skydomeVertex,
+            fragmentShader: skydomeFragment,
             side: BackSide
         });
 
