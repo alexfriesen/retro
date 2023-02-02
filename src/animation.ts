@@ -1,24 +1,24 @@
 import {
-    Float32BufferAttribute,
-    Vector3,
-    BackSide,
-    DoubleSide,
-    Color,
-    Fog,
-    WebGLRenderer,
-    Scene,
-    PerspectiveCamera,
-    Clock,
-    BufferGeometry,
-    PlaneGeometry,
-    SphereGeometry,
-    Mesh,
-    Points,
-    MeshBasicMaterial,
-    PointsMaterial,
-    ShaderMaterial,
-    ReinhardToneMapping,
-} from "three";
+	Float32BufferAttribute,
+	Vector3,
+	BackSide,
+	DoubleSide,
+	Color,
+	Fog,
+	WebGLRenderer,
+	Scene,
+	PerspectiveCamera,
+	Clock,
+	BufferGeometry,
+	PlaneGeometry,
+	SphereGeometry,
+	Mesh,
+	Points,
+	MeshBasicMaterial,
+	PointsMaterial,
+	ShaderMaterial,
+	ReinhardToneMapping,
+} from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -26,240 +26,226 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 // import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 
-import { Terrain } from './terrain'
+import { Terrain } from './terrain';
 import skydomeVertex from './glsl/skydome.vert';
 import skydomeFragment from './glsl/skydome.frag';
 
 export class RetroSceneAnimation {
+	canvas: HTMLCanvasElement;
 
-    canvas: HTMLCanvasElement;
+	pink = 0xbc1974;
+	skyColor = 0x1b073b;
+	groundColor = 0x0c062a;
 
-    pink = 0xbc1974;
-    skyColor = 0x1b073b;
-    groundColor = 0x0c062a;
+	FOV = 45;
+	NEAR = 1;
+	FAR = 350;
 
-    FOV = 45;
-    NEAR = 1;
-    FAR = 350;
+	terrain: Terrain;
 
-    terrain: Terrain;
+	controls: OrbitControls;
+	camera: PerspectiveCamera;
+	renderer: WebGLRenderer;
+	composer: EffectComposer;
+	clock = new Clock();
+	scene = new Scene();
 
-    controls: OrbitControls;
-    camera: PerspectiveCamera;
-    renderer: WebGLRenderer;
-    composer: EffectComposer;
-    clock = new Clock();
-    scene = new Scene();
+	animationId: number | null = null;
 
-    animationId: number | null = null;
+	constructor(canvas: HTMLCanvasElement) {
+		this.canvas = canvas;
+		const width = canvas.clientWidth;
+		const height = canvas.clientHeight;
+		const aspect = width / height;
 
-    constructor(canvas: HTMLCanvasElement) {
+		this.scene.background = new Color(this.skyColor);
+		this.scene.fog = new Fog(this.pink, 1, this.FAR / 2);
 
-        this.canvas = canvas;
-        const width = canvas.clientWidth;
-        const height = canvas.clientHeight;
-        const aspect = width / height;
+		this.scene.add(this.createSkydome());
 
-        this.scene.background = new Color(this.skyColor);
-        this.scene.fog = new Fog(this.pink, 1, this.FAR / 2);
+		this.scene.add(this.createSunset());
 
-        this.scene.add(this.createSkydome());
+		this.createStars().map((star) => this.scene.add(star));
 
-        this.scene.add(this.createSunset());
+		this.camera = new PerspectiveCamera(this.FOV, aspect, this.NEAR, this.FAR);
+		this.camera.position.set(0, 6, 30);
 
-        this.createStars().map(star => this.scene.add(star));
+		this.scene.add(this.camera);
 
-        this.camera = new PerspectiveCamera(this.FOV, aspect, this.NEAR, this.FAR);
-        this.camera.position.set(0, 6, 30);
+		this.terrain = new Terrain(this.FAR);
+		this.terrain.createChunk(new Vector3());
+		this.terrain.createChunk(new Vector3(0, 0, -1));
 
-        this.scene.add(this.camera);
+		this.terrain.addTo(this.scene);
 
-        this.terrain = new Terrain(this.FAR);
-        this.terrain.createChunk(new Vector3());
-        this.terrain.createChunk(new Vector3(0, 0, -1));
+		this.renderer = new WebGLRenderer({ antialias: true, canvas });
+		this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+		this.renderer.toneMapping = ReinhardToneMapping;
+		this.renderer.toneMappingExposure = Math.pow(1, 4.0);
 
-        this.terrain.addTo(this.scene);
+		const renderPass = new RenderPass(this.scene, this.camera);
 
-        this.renderer = new WebGLRenderer({ antialias: true, canvas });
-        this.renderer.setPixelRatio(window.devicePixelRatio || 1);
-        this.renderer.toneMapping = ReinhardToneMapping;
-        this.renderer.toneMappingExposure = Math.pow(1, 4.0);
+		// const bloomPass = new UnrealBloomPass(new Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0.8);
+		// bloomPass.threshold = 0;
+		// bloomPass.strength = 1.5;
+		// bloomPass.radius = 0.8;
 
-        const renderPass = new RenderPass(this.scene, this.camera);
+		// const glitchPass = new GlitchPass();
 
-        // const bloomPass = new UnrealBloomPass(new Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0.8);
-        // bloomPass.threshold = 0;
-        // bloomPass.strength = 1.5;
-        // bloomPass.radius = 0.8;
+		const effectFilm = new FilmPass(
+			0.2, // noise intensity
+			0.75, // scanline intensity
+			2048, // scanline count
+			0 // grayscale
+		);
 
-        // const glitchPass = new GlitchPass();
+		this.composer = new EffectComposer(this.renderer);
+		this.composer.addPass(renderPass);
+		// composer.addPass(bloomPass);
+		this.composer.addPass(effectFilm);
+		// composer.addPass(glitchPass);
 
-        const effectFilm = new FilmPass(
-            0.2, // noise intensity
-            0.75, // scanline intensity
-            2048, // scanline count
-            0 // grayscale
-        );
+		this.controls = this.createControls();
+	}
 
-        this.composer = new EffectComposer(this.renderer);
-        this.composer.addPass(renderPass);
-        // composer.addPass(bloomPass);
-        this.composer.addPass(effectFilm);
-        // composer.addPass(glitchPass);
+	createSkydome() {
+		const uniforms = {
+			topColor: { value: new Color(this.skyColor) },
+			bottomColor: { value: new Color(this.pink) },
+			offset: { value: -4 },
+			exponent: { value: 0.2 },
+		};
 
-        this.controls = this.createControls();
+		const skyGeometry = new SphereGeometry(this.FAR / 2, 32, 15);
+		const skyMataterial = new ShaderMaterial({
+			uniforms: uniforms,
+			vertexShader: skydomeVertex,
+			fragmentShader: skydomeFragment,
+			side: BackSide,
+		});
 
-    }
+		return new Mesh(skyGeometry, skyMataterial);
+	}
 
-    createSkydome() {
-        const uniforms = {
-            "topColor": { value: new Color(this.skyColor) },
-            "bottomColor": { value: new Color(this.pink) },
-            "offset": { value: -4 },
-            "exponent": { value: 0.2 }
-        };
+	createGround() {
+		const geometry = new PlaneGeometry(this.FAR, this.FAR, 100, 100);
+		const material = new MeshBasicMaterial({ color: this.groundColor });
+		material.side = DoubleSide;
+		const mesh = new Mesh(geometry, material);
+		mesh.rotateX(Math.PI / 2); // 90deg
 
-        const skyGeometry = new SphereGeometry(this.FAR / 2, 32, 15);
-        const skyMataterial = new ShaderMaterial({
-            uniforms: uniforms,
-            vertexShader: skydomeVertex,
-            fragmentShader: skydomeFragment,
-            side: BackSide
-        });
+		return mesh;
+	}
 
-        return new Mesh(skyGeometry, skyMataterial);
+	createSunset(size = 40) {
+		const geometry = new SphereGeometry(size, size, 32);
+		const material = new MeshBasicMaterial({ color: this.pink });
+		const mesh = new Mesh(geometry, material);
 
-    }
+		mesh.position.set(0, size * 0.35, -this.FAR / 1.8);
 
-    createGround() {
-        const geometry = new PlaneGeometry(this.FAR, this.FAR, 100, 100);
-        const material = new MeshBasicMaterial({ color: this.groundColor });
-        material.side = DoubleSide;
-        const mesh = new Mesh(geometry, material);
-        mesh.rotateX(Math.PI / 2); // 90deg
+		return mesh;
+	}
 
-        return mesh;
-    }
+	createStars() {
+		const geometry = new BufferGeometry();
 
-    createSunset(size = 40) {
+		const vertices = [];
+		const vertex = new Vector3();
 
-        const geometry = new SphereGeometry(size, size, 32);
-        const material = new MeshBasicMaterial({ color: this.pink });
-        const mesh = new Mesh(geometry, material);
+		for (let i = 0; i < 2000; i++) {
+			vertex.x = Math.random() * 2 - 1;
+			vertex.y = Math.random() * 2 - 1;
+			vertex.z = Math.random() * 2 - 1;
+			vertex.multiplyScalar(3);
 
-        mesh.position.set(0, size * 0.35, -this.FAR / 1.8);
+			vertices.push(vertex.x, vertex.y, vertex.z);
+		}
 
-        return mesh;
-    }
+		geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
 
-    createStars() {
-        const geometry = new BufferGeometry();
+		const starsMaterials = [
+			0x555555, 0x333333, 0x3a3a3a,
+			// 0x1a1a1a
+		].reduce((materials, color) => {
+			materials.push(
+				new PointsMaterial({
+					color,
+					size: 2,
+					sizeAttenuation: false,
+				}),
+				new PointsMaterial({
+					color,
+					size: 1,
+					sizeAttenuation: false,
+				})
+			);
+			return materials;
+		}, [] as PointsMaterial[]);
 
-        const vertices = [];
-        const vertex = new Vector3();
+		const materialCount = starsMaterials.length;
 
-        for (let i = 0; i < 2000; i++) {
-            vertex.x = Math.random() * 2 - 1;
-            vertex.y = Math.random() * 2 - 1;
-            vertex.z = Math.random() * 2 - 1;
-            vertex.multiplyScalar(3);
+		const stars = [];
+		for (let i = 10; i < 20; i++) {
+			const points = new Points(geometry, starsMaterials[i % materialCount]);
 
-            vertices.push(vertex.x, vertex.y, vertex.z);
-        }
+			points.rotation.x = Math.random() * 2;
+			points.rotation.y = Math.random() * 2;
+			points.rotation.z = Math.random() * 2;
+			points.scale.setScalar(i * 10);
 
-        geometry.setAttribute(
-            "position",
-            new Float32BufferAttribute(vertices, 3)
-        );
+			points.matrixAutoUpdate = false;
+			points.updateMatrix();
 
-        const starsMaterials = [
-            0x555555,
-            0x333333,
-            0x3a3a3a,
-            // 0x1a1a1a
-        ].reduce((materials, color) => {
-            materials.push(
-                new PointsMaterial({
-                    color,
-                    size: 2,
-                    sizeAttenuation: false,
-                }),
-                new PointsMaterial({
-                    color,
-                    size: 1,
-                    sizeAttenuation: false,
-                }),
-            );
-            return materials;
-        }, [] as PointsMaterial[]);
+			stars.push(points);
+		}
 
-        const materialCount = starsMaterials.length;
+		return stars;
+	}
 
-        const stars = []
-        for (let i = 10; i < 20; i++) {
-            const points = new Points(
-                geometry,
-                starsMaterials[i % materialCount]
-            );
+	createControls() {
+		const controls = new OrbitControls(this.camera, this.canvas);
 
-            points.rotation.x = Math.random() * 2;
-            points.rotation.y = Math.random() * 2;
-            points.rotation.z = Math.random() * 2;
-            points.scale.setScalar(i * 10);
+		const horizontalLimit = 1.8;
+		const minVerticalLimit = 0.35;
+		const maxVerticalLimit = 0.48;
 
-            points.matrixAutoUpdate = false;
-            points.updateMatrix();
+		controls.enablePan = false;
+		controls.enableZoom = false;
+		controls.enableDamping = true;
 
-            stars.push(points);
-        }
+		// ranges from 0 to Math.PI
+		controls.minPolarAngle = minVerticalLimit * Math.PI;
+		controls.maxPolarAngle = maxVerticalLimit * Math.PI;
 
-        return stars;
-    }
+		// ranges from -2Math.PI to 2Math.PI
+		controls.maxAzimuthAngle = -horizontalLimit * Math.PI;
+		controls.minAzimuthAngle = horizontalLimit * Math.PI;
 
-    createControls() {
-        const controls = new OrbitControls(this.camera, this.canvas);
+		return controls;
+	}
 
-        const horizontalLimit = 1.8;
-        const minVerticalLimit = 0.35;
-        const maxVerticalLimit = 0.48;
+	resize(width: number, height: number) {
+		this.camera.aspect = width / height;
+		this.camera.updateProjectionMatrix();
 
-        controls.enablePan = false;
-        controls.enableZoom = false;
-        controls.enableDamping = true;
+		this.renderer.setSize(width, height);
+		this.composer.setSize(width, height);
+	}
 
-        // ranges from 0 to Math.PI
-        controls.minPolarAngle = minVerticalLimit * Math.PI;
-        controls.maxPolarAngle = maxVerticalLimit * Math.PI;
+	render() {
+		this.terrain.update(0.5);
 
-        // ranges from -2Math.PI to 2Math.PI
-        controls.maxAzimuthAngle = -horizontalLimit * Math.PI;
-        controls.minAzimuthAngle = horizontalLimit * Math.PI;
+		this.controls.update();
+		this.composer.render();
+		// this.renderer.render(this.scene, this.camera);
 
-        return controls;
-    }
+		this.animationId = requestAnimationFrame(() => this.render());
+	}
 
-    resize(width: number, height: number) {
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-
-        this.renderer.setSize(width, height);
-        this.composer.setSize(width, height);
-    }
-
-    render() {
-        this.terrain.update(0.5);
-
-        this.controls.update();
-        this.composer.render();
-        // this.renderer.render(this.scene, this.camera);
-
-        this.animationId = requestAnimationFrame(() => this.render());
-    }
-
-    stop() {
-        if (this.animationId) {
-            cancelAnimationFrame(this.animationId);
-        }
-    }
-
+	stop() {
+		if (this.animationId) {
+			cancelAnimationFrame(this.animationId);
+		}
+	}
 }
