@@ -11,8 +11,10 @@
     "noEmit": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitReturns": true
+    "noImplicitReturns": true,
+		"types": ["vite/client", "vite-plugin-glsl/ext"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+	"files": ["src/index.ts"],
+  "include": ["src/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "public", "tests"]
 }
