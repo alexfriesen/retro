@@ -1,21 +1,8 @@
 import { RetroSceneAnimation } from './animation';
+import shadowDom from './shadowdom.html?raw';
 
 const template = document.createElement('template');
-template.innerHTML = /*html*/ `
-    <style>
-        :host {
-            display: block;
-            height: 100%;
-            width: 100%;
-        }
-        canvas {
-            position: relative;
-            height: 100%;
-            width: 100%;
-        }
-    </style>
-    <canvas id="canvas"></canvas>
-`;
+template.innerHTML = shadowDom;
 
 class RetroScene extends HTMLElement {
 	private shadow: ShadowRoot;
